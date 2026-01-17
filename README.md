@@ -24,3 +24,4 @@ Request:
   "customerEmail": "test@example.com"
 }
 
+# sim-card-activator-Main
