@@ -1,16 +1,21 @@
 package au.com.telstra.simcardactivator;
 
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 
 @RestController
 @RequestMapping("/api")
 public class SimActivationController {
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate = new RestTemplate();
+    private final SimCardActivationRepository repository;
+
+    public SimActivationController(RestTemplate restTemplate,
+                                   SimCardActivationRepository repository) {
+        this.restTemplate = restTemplate;
+        this.repository = repository;
+    }
+
 
     @PostMapping("/activate-sim")
     public String activateSim(@RequestBody ActivateSimRequest request){
@@ -21,16 +26,23 @@ public class SimActivationController {
           ActuatorResponse.class
         );
 
-        if (response != null && response.isSuccess()) {
-            System.out.println("SIM Activation Successful");
-            return "SIM activation successful";
-        } else {
-            System.out.println("SIM Activation Failed");
-            return "SIM activation failed";
-        }
+        boolean success = response != null && response.isSuccess();
 
+        // Save to DB
+        SimCardActivation entity = new SimCardActivation(
+                request.getIccid(),
+                request.getCustomerEmail(),
+                success
+        );
+
+        repository.save(entity);
+        return success ? "SIM activation successful"
+                : "SIM activation failed";
     }
 
-
-
+    @GetMapping("/sim-card")
+    public SimCardActivation getSimCard(@RequestParam Long simCardId) {
+        return repository.findById(simCardId)
+                .orElseThrow(() -> new RuntimeException("SIM not found"));
+    }
 }
